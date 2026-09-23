@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+agent_log.txt
+autocompleter.db
+chat_history_persistent.json
+history/
+*.egg-info/
+build/
+dist/
+shots/
+
+# Ignore Recycle Bin and system files
+$RECYCLE.BIN/
+$Recycle.Bin/
+*$RECYCLE.BIN*

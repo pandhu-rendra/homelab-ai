@@ -1,0 +1,14 @@
+Rotasi log masih rentan WinError 32
+Log menunjukkan provider_failures.log gagal di-rotate karena thread/provider lain masih memegang file. Gunakan queue-based logging atau handler dengan lock khusus Windows.
+
+Belum ada validasi sintaks setelah edit
+Untuk target:
+Python: jalankan compile/typecheck
+JavaScript: jalankan parser/node check
+HTML/CSS: validasi struktur dasar
+website: jalankan browser smoke test
+
+Belum ada batas ukuran file dari model
+Model bisa mengirim file sangat besar dan langsung ditulis. Tambahkan batas, misalnya:
+max source file: 1 MB
+max response: 32k chars
