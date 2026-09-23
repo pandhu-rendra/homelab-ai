@@ -8,6 +8,7 @@ set -euo pipefail
 
 VERSION="${1:-}"
 INSTALL_SCRIPT="$(dirname "$0")/../install.sh"
+INSTALL_PS_SCRIPT="$(dirname "$0")/../install.ps1"
 RELEASES_DIR="$(dirname "$0")/../releases"
 DIST_DIR="$(dirname "$0")/../dist"
 
@@ -22,6 +23,9 @@ fail() { printf "  ${RED}✗${NC} %s\n" "$*"; exit 1; }
 # ── Pre-flight ───────────────────────────────────────────────────────────────
 if [[ ! -f "$INSTALL_SCRIPT" ]]; then
   fail "install.sh not found at $INSTALL_SCRIPT. Run this script from the project root."
+fi
+if [[ ! -f "$INSTALL_PS_SCRIPT" ]]; then
+  fail "install.ps1 not found at $INSTALL_PS_SCRIPT. Run this script from the project root."
 fi
 
 for cmd in python3 openssl tar git; do
@@ -84,6 +88,12 @@ openssl enc -aes-256-cbc -salt \
   -out "$PROJECT_DIR/$RELEASES_DIR/${RELEASE_NAME}.tar.gz.enc" \
   -pass pass:"$RELEASE_KEY"
 ok "Encrypted → releases/${RELEASE_NAME}.tar.gz.enc"
+if command -v sha256sum &>/dev/null; then
+  sha256sum "$PROJECT_DIR/$RELEASES_DIR/${RELEASE_NAME}.tar.gz.enc" > "$PROJECT_DIR/$RELEASES_DIR/${RELEASE_NAME}.tar.gz.enc.sha256"
+else
+  shasum -a 256 "$PROJECT_DIR/$RELEASES_DIR/${RELEASE_NAME}.tar.gz.enc" > "$PROJECT_DIR/$RELEASES_DIR/${RELEASE_NAME}.tar.gz.enc.sha256"
+fi
+ok "Checksum → releases/${RELEASE_NAME}.tar.gz.enc.sha256"
 
 # ── Build installer with embedded key ────────────────────────────────────────
 mkdir -p "$PROJECT_DIR/$DIST_DIR"
@@ -91,6 +101,9 @@ sed "s/__HOMELAB_RELEASE_KEY__/$RELEASE_KEY/g" "$INSTALL_SCRIPT" \
   > "$PROJECT_DIR/$DIST_DIR/install.sh"
 chmod +x "$PROJECT_DIR/$DIST_DIR/install.sh"
 ok "Installer → dist/install.sh"
+sed "s/__HOMELAB_RELEASE_KEY__/$RELEASE_KEY/g" "$INSTALL_PS_SCRIPT" \
+  > "$PROJECT_DIR/$DIST_DIR/install.ps1"
+ok "Installer → dist/install.ps1"
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 printf "\n  ${GREEN}${BOLD}Release ${RELEASE_NAME} built!${NC}\n"
@@ -98,13 +111,17 @@ printf -- "  ──────────────────────�
 printf "\n"
 printf "  ${BOLD}Files:${NC}\n"
 printf "    ${CYAN}releases/${RELEASE_NAME}.tar.gz.enc${NC}\n"
+printf "    ${CYAN}releases/${RELEASE_NAME}.tar.gz.enc.sha256${NC}\n"
 printf "    ${CYAN}dist/install.sh${NC}\n"
+printf "    ${CYAN}dist/install.ps1${NC}\n"
 printf "\n"
 printf "  ${BOLD}Decryption key:${NC} ${YELLOW}%s${NC}\n" "$RELEASE_KEY"
 printf "\n"
 printf "  ${BOLD}Upload to VPS:${NC}\n"
 printf "    scp releases/${RELEASE_NAME}.tar.gz.enc user@altivon.my.id:/var/www/html/releases/homelab-ai.tar.gz.enc\n"
+printf "    scp releases/${RELEASE_NAME}.tar.gz.enc.sha256 user@altivon.my.id:/var/www/html/releases/homelab-ai.tar.gz.enc.sha256\n"
 printf "    scp dist/install.sh              user@altivon.my.id:/var/www/html/install.sh\n"
+printf "    scp dist/install.ps1             user@altivon.my.id:/var/www/html/install.ps1\n"
 printf "\n"
 printf "  ${YELLOW}⚠${NC} The key is embedded in dist/install.sh — upload both together.\n"
 printf "\n"

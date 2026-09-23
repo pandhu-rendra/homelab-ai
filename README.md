@@ -9,6 +9,30 @@ curl -fsSL https://altivon.my.id/install.sh | sh
 homelab
 ```
 
+On Windows PowerShell, use the native installer:
+
+```powershell
+irm https://altivon.my.id/install.ps1 | iex
+homelab
+```
+
+The Bash installer remains available for Linux, macOS, Git Bash, WSL, and
+MSYS2. Release builds publish both `install.sh` and `install.ps1`.
+
+Installation maintenance commands:
+
+```bash
+homelab doctor
+homelab update
+homelab rollback
+homelab uninstall                 # preview only
+homelab uninstall --confirm       # remove installation, preserve user data
+```
+
+Release archives can be verified with SHA-256 checksums. Generate a reproducible
+dependency lockfile with `scripts/lock-dependencies.sh` or
+`scripts/lock-dependencies.ps1` when `uv` is installed.
+
 ---
 
 ## Features
@@ -164,24 +188,44 @@ cp .env.example .env
 All settings live in `~/.homelab-ai/.env`:
 
 ```ini
-# Providers (at least one for full functionality)
-DEEPSEEK_API_KEY=sk-...
-GEMINI_API_KEY=...
+# =============================================================================
+# HomeLab AI — Environment Configuration
+# =============================================================================
+# Copy this file to .env and fill in the keys you want to use.
+# The TUI will try providers in order: DeepSeek → Gemini → OpenRouter → Flaz → G4F (if enabled)
+# Leave empty any providers you don't want to use.
+#
+# G4F is opt-in because it can be unreliable. Set HOMELAB_G4F_ENABLED=true to enable it.
+# =============================================================================
 
-# Provider models (optional, defaults shown)
+# --- DeepSeek ---
+DEEPSEEK_API_KEY=
 DEEPSEEK_MODEL=deepseek-chat
-GEMINI_MODEL=gemini-2.0-flash
 
-# G4F (free fallback, disabled by default)
-HOMELAB_G4F_ENABLED=false             # set true to enable G4F
-G4F_PROVIDER=                         # empty = auto
+# --- Google Gemini ---
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 
-# LLM request timeout; 0 waits indefinitely
-HOMELAB_LLM_TIMEOUT=0
-HOMELAB_MAX_ATTEMPTS=10             # 0 = unlimited agent attempts
+# --- OpenRouter (akses ke Claude, GPT, llama, dsb via satu API) ---
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openai/gpt-4o-mini
 
-# MCP server
-MCP_AUTH_TOKEN=
+# --- Flaz.id (OpenAI-compatible, berbagai model termasuk Claude) ---
+FLAZ_API_KEY=
+FLAZ_MODEL=claude-sonnet-4-20250514
+FLAZ_ENDPOINT=https://api.flaz.id/v1
+
+# Runtime safety limits. These values are bounded by the application.
+HOMELAB_LLM_TIMEOUT=30
+HOMELAB_MAX_ATTEMPTS=20
+HOMELAB_MAX_PROVIDER_ATTEMPTS=2
+HOMELAB_MAX_CONTEXT_CHARS=24000
+HOMELAB_MAX_TOTAL_TOKENS=12000
+
+# --- G4F (free, with out api key) ---
+HOMELAB_G4F_ENABLED=false
+G4F_PROVIDER=
+# Model used G4F. Leave blank for auto (gpt-4o-mini).
 ```
 
 Edit `.env` directly, or use the in-app command:
@@ -266,9 +310,13 @@ A local demo LLM handles all requests. The UI, tools, and plugins work normally.
 │   ├── watcher.py         File watcher
 │   ├── rag.py             Codebase RAG engine
 │   ├── demo.py            Offline demo mode
-│   └── os/
-│       ├── system_io.py   System-level I/O operations
-│       └── vision_agent.py Image analysis
+│   ├── os/
+│   │   ├── __init__.py       OS integration package
+│   │   ├── system_io.py      System-level I/O operations
+│   │   └── vision_agent.py   Screen and image analysis
+│   └── ui/
+│       ├── __init__.py       UI package
+│       └── dashboard.py      Humanized dashboard helpers
 ├── plugins/               User-installed plugins
 ├── install.sh             Cross-platform installer
 └── .env                   API keys

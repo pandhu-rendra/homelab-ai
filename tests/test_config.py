@@ -58,3 +58,24 @@ def test_config_meta_has_all_keys() -> None:
 def test_g4f_enabled_parses_boolean(monkeypatch, value: str, expected: bool) -> None:
     monkeypatch.setenv("HOMELAB_G4F_ENABLED", value)
     assert (value.strip().lower() in {"1", "true", "yes", "on"}) is expected
+
+
+def test_doctor_reports_installation_state() -> None:
+    from homelab_ai.maintenance import doctor
+
+    result = doctor()
+
+    assert "HomeLab AI doctor" in result
+    assert "Python:" in result
+
+
+def test_uninstall_requires_confirmation(tmp_path) -> None:
+    from homelab_ai.maintenance import uninstall
+
+    target = tmp_path / "homelab-ai"
+    target.mkdir()
+
+    result = uninstall(target)
+
+    assert "--confirm" in result
+    assert target.exists()

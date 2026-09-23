@@ -33,6 +33,31 @@ On Linux/macOS, make the launcher executable once with `chmod +x
 run-homelab-ai.sh`. The CMD aliases in `cmd_profile.bat` use `pushd/popd` for
 the same behavior.
 
+For a native Windows installation, use the PowerShell installer:
+
+```powershell
+irm https://altivon.my.id/install.ps1 | iex
+homelab
+```
+
+The release builder creates both `dist/install.sh` and `dist/install.ps1`.
+
+Release integrity and maintenance:
+
+```text
+homelab doctor
+homelab update
+homelab rollback
+homelab uninstall
+homelab uninstall --confirm
+```
+
+`build-release.sh` creates a `.sha256` file beside the encrypted archive.
+Pass that hash to `--checksum` in `install.sh` or `-Checksum` in
+`install.ps1`. Use `--dry-run` or `-DryRun` to validate a download without
+extracting or modifying the target. Source removal after bytecode compilation
+is opt-in with `HOMELAB_PROTECT_SOURCE=1`; source is retained by default.
+
 ### Local AI skills
 
 Skills are instruction bundles, separate from Python plugins. Put a skill in

@@ -7,6 +7,9 @@
 # ==============================================================================
 set -euo pipefail
 
+INSTALL_LOG="${TMPDIR:-/tmp}/homelab-ai-install.log"
+exec > >(tee -a "$INSTALL_LOG") 2>&1
+
 # ── Defaults ─────────────────────────────────────────────────────────────────
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.homelab-ai}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
@@ -14,6 +17,9 @@ RELEASE_URL="${RELEASE_URL:-https://altivon.my.id/releases/homelab-ai.tar.gz.enc
 # build-release.sh replaces __HOMELAB_RELEASE_KEY__ with a real key
 RELEASE_KEY="${HOMELAB_RELEASE_KEY:-__HOMELAB_RELEASE_KEY__}"
 USE_PIP="${USE_PIP:-0}"
+DRY_RUN="${DRY_RUN:-0}"
+CHECKSUM="${RELEASE_CHECKSUM:-}"
+PROTECT_SOURCE="${HOMELAB_PROTECT_SOURCE:-0}"
 
 # ── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -33,7 +39,9 @@ Options:
   -d, --dir DIR      Install to DIR (default: \$HOME/.homelab-ai)
   -u, --url URL      Download URL (default: $RELEASE_URL)
   -k, --key KEY      Decryption key (default: embedded)
+  --checksum HASH    Expected SHA-256 checksum of encrypted release
   --no-uv            Use pip instead of uv
+  --dry-run          Validate download/checksum without changing the system
   -h, --help         Show this help message
 
 Examples:
@@ -49,7 +57,9 @@ while [[ $# -gt 0 ]]; do
     -d|--dir)     INSTALL_DIR="$2"; shift 2 ;;
     -u|--url)     RELEASE_URL="$2"; shift 2 ;;
     -k|--key)     RELEASE_KEY="$2"; shift 2 ;;
+    --checksum)   CHECKSUM="$2"; shift 2 ;;
     --no-uv)      USE_PIP=1;        shift ;;
+    --dry-run)    DRY_RUN=1;        shift ;;
     -h|--help)    usage ;;
     *)            fail "Unknown option: $1";;
   esac
@@ -113,6 +123,15 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 info "Downloading HomeLab AI..."
 curl -fsSL -o "$TMP_DIR/release.tar.gz.enc" "$RELEASE_URL"
 ok "Downloaded ($(du -h "$TMP_DIR/release.tar.gz.enc" | cut -f1))"
+if [[ -n "$CHECKSUM" ]]; then
+  ACTUAL_CHECKSUM=$(sha256sum "$TMP_DIR/release.tar.gz.enc" | awk '{print $1}')
+  [[ "$ACTUAL_CHECKSUM" == "$CHECKSUM" ]] || fail "Release checksum verification failed."
+  ok "Checksum verified"
+fi
+if [[ "$DRY_RUN" == "1" ]]; then
+  ok "Dry run complete; no files changed. Target: $INSTALL_DIR"
+  exit 0
+fi
 
 # ── Decrypt ───────────────────────────────────────────────────────────────────
 info "Decrypting..."
@@ -136,8 +155,12 @@ compileall.compile_dir('.', force=True, quiet=1)
 
 # Only remove .py if compilation succeeded
 if python3 -c "import homelab_ai" 2>/dev/null || PYTHONPATH="$PWD" python3 -c "import homelab_ai" 2>/dev/null; then
-  find . -name '*.py' -not -path './.env*' -delete
-  ok "Source protected (compiled to .pyc)"
+  if [[ "$PROTECT_SOURCE" == "1" ]]; then
+    find . -name '*.py' -not -path './.env*' -delete
+    ok "Source protected (compiled to .pyc)"
+  else
+    ok "Bytecode compiled; source retained"
+  fi
 else
   warn "Package import check failed — keeping .py files"
 fi
@@ -169,10 +192,21 @@ fi
 # ── Launcher ──────────────────────────────────────────────────────────────────
 if [[ "$OS" == "windows" ]]; then
   mkdir -p "$BIN_DIR"
+  if command -v cygpath &>/dev/null; then
+    INSTALL_DIR_WIN="$(cygpath -w "$INSTALL_DIR")"
+    VENV_PYTHON_WIN="$(cygpath -w "$INSTALL_DIR/.venv/Scripts/python.exe")"
+  else
+    INSTALL_DIR_WIN="$INSTALL_DIR"
+    VENV_PYTHON_WIN="$INSTALL_DIR/.venv/Scripts/python.exe"
+  fi
   cat <<EOF > "$BIN_DIR/homelab.cmd"
 @echo off
-set "PYTHONPATH=%~dp0..\.."
-"%~dp0..\..\.venv\Scripts\python.exe" -m homelab_ai %*
+setlocal
+pushd "$INSTALL_DIR_WIN"
+"$VENV_PYTHON_WIN" -m homelab_ai %*
+set "EXIT_CODE=%ERRORLEVEL%"
+popd
+exit /b %EXIT_CODE%
 EOF
   LAUNCHER="$BIN_DIR/homelab.cmd"
 else
