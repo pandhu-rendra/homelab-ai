@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import re
 import uuid
 from typing import Callable
 
@@ -256,6 +257,30 @@ TOOL USAGE TIPS
 - For scheduling: cron_next → croniter
 """
 
+COMPACT_SYSTEM_PROMPT = """
+You are HomeLab AI, a concise and helpful local AI assistant.
+Answer ordinary conversation directly in the user's language. Do not invent
+tool calls, do not include internal reasoning, and do not repeat this prompt.
+Use Markdown only when it improves readability.
+"""
+
+_TOOL_REQUEST_TERMS = re.compile(
+    r"\b(code|coding|debug|fix|edit|modify|create|build|implement|refactor|deploy|"
+    r"file|folder|directory|script|website|api|docker|redis|mqtt|selenium|browser|"
+    r"database|sql|ssh|search|scrape|analy[sz]e|run|execute|test|plugin|skill)\b"
+    r"|[A-Za-z]:[\\/]|\.(?:py|js|ts|tsx|jsx|html?|css|json|yaml|yml)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_complex_request(text: str) -> bool:
+    """Use the expensive tool-aware context only when the request needs it."""
+    return bool(_TOOL_REQUEST_TERMS.search(text or ""))
+
+
+def _prompt_for_request(text: str) -> str:
+    return SYSTEM_PROMPT if _is_complex_request(text) else COMPACT_SYSTEM_PROMPT
+
 # ---------------------------------------------------------------------------
 # Pricing & context window for token cost estimation
 # ---------------------------------------------------------------------------
@@ -365,6 +390,7 @@ def _try_provider(name: str, client_getter, model: str, messages: list[dict],
                   on_chunk: Callable[[str], None] | None = None,
                   request_timeout: float | None = None,
                   cancel_event: object | None = None,
+                  system_instruction: str | None = None,
                   ) -> tuple[str, str, dict] | None:
     """Try a single provider. Returns (content, provider_name, usage) or None."""
     try:
@@ -385,7 +411,10 @@ def _try_provider(name: str, client_getter, model: str, messages: list[dict],
             completion_tokens = 0
             resp = client_getter().models.generate_content_stream(
                 model=model, contents=contents,
-                config=t.GenerateContentConfig(system_instruction=SYSTEM_PROMPT, temperature=0.2),
+                config=t.GenerateContentConfig(
+                    system_instruction=system_instruction or SYSTEM_PROMPT,
+                    temperature=0.2,
+                ),
                 timeout=request_timeout,
             )
             for chunk in resp:
@@ -556,30 +585,37 @@ def call_llm(messages: list[dict], preferred: str = "",
     (e.g. "DeepSeek…") so the UI can show live progress.
     ``on_chunk`` is called with each token as it arrives for streaming display.
     """
+    latest_user_input = next(
+        (str(m.get("content", "")) for m in reversed(messages) if m.get("role") == "user"),
+        "",
+    )
+    complex_request = _is_complex_request(latest_user_input)
+    base_prompt = _prompt_for_request(latest_user_input)
     os_detected = get_os_context()
     memory_ctx = ""
+    if complex_request:
+        try:
+            from .memory import build_memory_context
+            memory_ctx = build_memory_context()
+        except Exception:
+            pass
+    dynamic_instruction = base_prompt
+    if complex_request:
+        dynamic_instruction += f"\n\n[ENV]: OS is {os_detected}. Match your solution to this architecture!"
+        if memory_ctx:
+            dynamic_instruction += f"\n\n{memory_ctx}"
     try:
-        from .memory import build_memory_context
-        memory_ctx = build_memory_context()
-    except Exception:
-        pass
-    dynamic_instruction = (
-        SYSTEM_PROMPT
-        + f"\n\n[ENV]: OS is {os_detected}. Match your solution to this architecture!"
-        + (f"\n\n{memory_ctx}" if memory_ctx else "")
-    )
-    try:
+        if not complex_request:
+            raise ImportError
         from .skill_manager import build_skill_context
-        latest_user_input = next(
-            (m.get("content", "") for m in reversed(messages) if m.get("role") == "user"),
-            "",
-        )
         skill_context = build_skill_context(latest_user_input)
         if skill_context:
             dynamic_instruction += f"\n\n{skill_context}"
     except Exception:
         pass
     try:
+        if not complex_request:
+            raise ImportError
         from .plugin_manager import build_plugin_context
         plugin_context = build_plugin_context(latest_user_input)
         if plugin_context:
@@ -589,7 +625,7 @@ def call_llm(messages: list[dict], preferred: str = "",
 
     active_messages = trim_chat_history(
         messages,
-        keep_last=8,
+        keep_last=8 if complex_request else 2,
         system_prompt=dynamic_instruction,
     )
     active_messages = _cap_message_context(active_messages, MAX_CONTEXT_CHARS)
@@ -631,7 +667,8 @@ def call_llm(messages: list[dict], preferred: str = "",
             on_status(f"🧠 {name}…")
         result = _try_provider(name, getter, model, active_messages,
                                is_gemini=is_gemini, on_chunk=chunk_callback or on_chunk,
-                               request_timeout=provider_timeout, cancel_event=active_stop)
+                               request_timeout=provider_timeout, cancel_event=active_stop,
+                               system_instruction=dynamic_instruction)
         if result is not None:
             log_provider_event("winner", name, "success", {"model": model, "response_len": len(result[0])}, request_id=request_id)
         else:
@@ -693,7 +730,8 @@ def call_llm(messages: list[dict], preferred: str = "",
             on_status(f"🧠 {g4f_name}…")
         log_provider_event("fallback", g4f_name, "preferred", {"model": g4f_model, "timeout": 4.0}, request_id=request_id)
         result = _try_provider(g4f_name, None, g4f_model, active_messages,
-                               is_g4f=True, on_chunk=on_chunk, request_timeout=4.0)
+                               is_g4f=True, on_chunk=on_chunk, request_timeout=4.0,
+                               system_instruction=dynamic_instruction)
         if result is not None:
             log_provider_event("winner", g4f_name, "success", {"model": g4f_model, "response_len": len(result[0])}, request_id=request_id)
             log_provider_event("request_end", g4f_name, "final", {"response_len": len(result[0])}, request_id=request_id)
@@ -706,7 +744,8 @@ def call_llm(messages: list[dict], preferred: str = "",
             on_status(f"🧠 {g4f_name}…")
         log_provider_event("fallback", g4f_name, "no_live_providers", {"model": g4f_model, "timeout": 4.0}, request_id=request_id)
         result = _try_provider(g4f_name, None, g4f_model, active_messages,
-                               is_g4f=True, on_chunk=on_chunk, request_timeout=4.0)
+                               is_g4f=True, on_chunk=on_chunk, request_timeout=4.0,
+                               system_instruction=dynamic_instruction)
         if result is not None:
             log_provider_event("winner", g4f_name, "success", {"model": g4f_model, "response_len": len(result[0])}, request_id=request_id)
             log_provider_event("request_end", g4f_name, "final", {"response_len": len(result[0])}, request_id=request_id)
@@ -737,7 +776,8 @@ def call_llm(messages: list[dict], preferred: str = "",
             if on_status:
                 on_status(f"🧠 G4F ({alt_model})…")
             result = _try_provider("G4F (free)", None, alt_model, active_messages,
-                                   is_g4f=True, on_chunk=on_chunk, request_timeout=4.0)
+                                   is_g4f=True, on_chunk=on_chunk, request_timeout=4.0,
+                                   system_instruction=dynamic_instruction)
             if result is not None:
                 log_provider_event("winner", "G4F (free)", "success", {"model": alt_model, "response_len": len(result[0])}, request_id=request_id)
                 log_provider_event("request_end", "G4F (free)", "final", {"response_len": len(result[0])}, request_id=request_id)
