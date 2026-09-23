@@ -579,6 +579,13 @@ def call_llm(messages: list[dict], preferred: str = "",
             dynamic_instruction += f"\n\n{skill_context}"
     except Exception:
         pass
+    try:
+        from .plugin_manager import build_plugin_context
+        plugin_context = build_plugin_context(latest_user_input)
+        if plugin_context:
+            dynamic_instruction += f"\n\n{plugin_context}"
+    except Exception:
+        pass
 
     active_messages = trim_chat_history(
         messages,

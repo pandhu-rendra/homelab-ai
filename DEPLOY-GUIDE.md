@@ -33,6 +33,57 @@ On Linux/macOS, make the launcher executable once with `chmod +x
 run-homelab-ai.sh`. The CMD aliases in `cmd_profile.bat` use `pushd/popd` for
 the same behavior.
 
+### Local AI skills
+
+Skills are instruction bundles, separate from Python plugins. Put a skill in
+the repository-local `skills/<skill-name>/` directory with one of these files:
+
+```text
+SKILL.md
+skill.md
+CLAUDE.md
+GEMINI.md
+GPT.md
+AGENTS.md
+```
+
+`SKILL.md` is recommended for portability. Optional YAML frontmatter can
+declare `name`, `description`, `keywords`, or `triggers`:
+
+```markdown
+---
+name: Python Review
+description: Review and refactor Python code
+keywords: python, lint, refactor, test
+---
+
+Prefer small, tested changes and report validation evidence.
+```
+
+The same Markdown skill is injected into the prompt for Claude, Gemini, GPT,
+and OpenAI-compatible providers. Use `/skill list` to inspect project and user
+skills. Skills are selected by explicit name or matching metadata, so unrelated
+instructions are not sent on every request.
+
+### Portable AI plugins
+
+Plugins support two separate layers: optional executable Python hooks and a
+provider-neutral Markdown manifest. Put project plugins in
+`plugins/<plugin-name>/`:
+
+```text
+plugins/
+└── weather-plugin/
+    ├── plugin.py       # optional HomeLab AI / Pluggy hooks
+    └── PLUGIN.md       # portable instructions for Claude, Gemini, GPT, etc.
+```
+
+`PLUGIN.md` may use the same frontmatter fields as skills:
+`name`, `description`, `keywords`, and `triggers`. The Markdown manifest is
+injected only when its name or metadata matches the user request. The model
+receives instructions, never executable Python. Use `/plugin list` to see
+whether a plugin has a `portable` manifest.
+
 ### Spesifikasi minimal
 
 | Resource | Minimal |

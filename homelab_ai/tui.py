@@ -819,7 +819,11 @@ class HomeLabApp(App):
             table.add_column(style="grey74")
             table.add_column(style="grey42")
             for p in plugins:
-                table.add_row(p["name"], p["filename"], f"{p['size']} B")
+                table.add_row(
+                    p["name"],
+                    p["filename"],
+                    f"{p['size']} B" + (" · portable" if p.get("portable_manifest") else ""),
+                )
             self._log(Panel(table, title="Installed Plugins", border_style=ACCENT, box=ROUNDED))
         elif sub == "registry":
             registry = load_registry_plugins()

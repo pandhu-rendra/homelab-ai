@@ -1,8 +1,8 @@
 """Plugin system using pluggy — auto-discover hook implementations.
 
-Plugins can register new tools, modify behaviour, or respond to events.
-Place ``.py`` files in ``~/.config/homelab-ai/plugins/`` or install them
-via pip with the ``homelab_ai_plugin`` entry point.
+Plugins can register Python hooks and expose portable Markdown instructions to
+Claude, Gemini, GPT, and OpenAI-compatible models. Place project plugins in
+``plugins/<name>/`` with ``plugin.py`` and optionally ``PLUGIN.md``.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import importlib
 import importlib.metadata
 import inspect
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable
@@ -56,7 +57,10 @@ class HomelabAIHooks:
 # ---------------------------------------------------------------------------
 
 PLUGIN_DIR = Path.home() / ".config" / "homelab-ai" / "plugins"
-PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+PROJECT_PLUGIN_DIR = BASE_DIR / "plugins"
+LEGACY_PLUGIN_DIR = PLUGIN_DIR
+PROJECT_PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
+PLUGIN_DIR = PROJECT_PLUGIN_DIR
 
 _manager = pluggy.PluginManager("homelab_ai")
 _manager.add_hookspecs(HomelabAIHooks)
@@ -70,9 +74,12 @@ def discover_plugins():
         return
     _loaded = True
 
-    # 1. Folder-based plugins
-    if PLUGIN_DIR.exists():
-        for fpath in sorted(PLUGIN_DIR.glob("*.py")):
+    # 1. Project-local and legacy folder-based Python plugins
+    roots = [PROJECT_PLUGIN_DIR]
+    if LEGACY_PLUGIN_DIR != PROJECT_PLUGIN_DIR:
+        roots.append(LEGACY_PLUGIN_DIR)
+    for root in roots:
+        for fpath in sorted(root.glob("*.py")) + sorted(root.glob("*/plugin.py")):
             if fpath.name.startswith("_"):
                 continue
             mod_name = f"homelab_ai_plugin_{fpath.stem}"
@@ -135,8 +142,11 @@ def reload_plugins() -> int:
     discover_plugins()
     # Count how many were loaded
     count = 0
-    if PLUGIN_DIR.exists():
-        count = sum(1 for f in PLUGIN_DIR.glob("*.py") if not f.name.startswith("_"))
+    count = 0
+    for root in (PROJECT_PLUGIN_DIR, LEGACY_PLUGIN_DIR):
+        if root.exists():
+            count += sum(1 for f in root.glob("*.py") if not f.name.startswith("_"))
+            count += sum(1 for f in root.glob("*/plugin.py"))
     return count
 
 
@@ -166,3 +176,60 @@ def apply_after_query(user_input: str, response: str) -> str:
     except Exception:
         pass
     return response
+
+
+def list_plugin_manifests() -> list[dict]:
+    """List portable plugin instruction manifests separately from Python hooks."""
+    results: dict[str, dict] = {}
+    for root, origin in ((PROJECT_PLUGIN_DIR, "project"), (LEGACY_PLUGIN_DIR, "user")):
+        if not root.exists():
+            continue
+        candidates = list(root.glob("*/PLUGIN.md")) + list(root.glob("*/plugin.md"))
+        candidates += list(root.glob("*.md"))
+        for path in sorted(candidates):
+            metadata = _read_plugin_frontmatter(path)
+            key = path.parent.name if path.parent != root else path.stem
+            results.setdefault(key, {
+                "name": str(metadata.get("name") or key),
+                "path": str(path),
+                "origin": origin,
+                "description": str(metadata.get("description") or ""),
+                "keywords": str(metadata.get("keywords") or metadata.get("triggers") or ""),
+            })
+    return [results[name] for name in sorted(results)]
+
+
+def build_plugin_context(user_input: str) -> str:
+    """Return relevant portable plugin instructions for the active LLM."""
+    query = user_input or ""
+    selected = []
+    for manifest in list_plugin_manifests():
+        terms = " ".join((manifest["name"], manifest["description"], manifest["keywords"])).lower()
+        if manifest["name"].lower() in query.lower() or any(
+            term in query.lower() for term in re.findall(r"[a-z0-9][a-z0-9_-]{2,}", terms)
+        ):
+            try:
+                content = Path(manifest["path"]).read_text(encoding="utf-8")
+            except OSError:
+                continue
+            selected.append(f"[PORTABLE PLUGIN: {manifest['name']}]\n{content[:12000]}")
+    if not selected:
+        return ""
+    return "[PLUGIN EXECUTION RULES]\nUse the portable plugin instructions below with the current model. Python hook code is executed only by HomeLab AI, never by the model.\n\n" + "\n\n".join(selected)
+
+
+def _read_plugin_frontmatter(path: Path) -> dict[str, str]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}
+    if not text.startswith("---"):
+        return {}
+    metadata: dict[str, str] = {}
+    for line in text.splitlines()[1:]:
+        if line.strip() == "---":
+            break
+        if ":" in line:
+            key, value = line.split(":", 1)
+            metadata[key.strip().lower()] = value.strip().strip('"\'')
+    return metadata

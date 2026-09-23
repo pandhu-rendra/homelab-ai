@@ -73,3 +73,38 @@ def test_hot_reload() -> None:
     # Just ensure it doesn't crash
     count = hot_reload()
     assert isinstance(count, int)
+
+
+def test_project_plugin_manifest_context(tmp_path, monkeypatch) -> None:
+    import homelab_ai.plugin_manager as manager
+
+    plugin_dir = tmp_path / "weather-plugin"
+    plugin_dir.mkdir()
+    (plugin_dir / "plugin.py").write_text("# executable hook", encoding="utf-8")
+    (plugin_dir / "PLUGIN.md").write_text(
+        "---\nname: Weather Plugin\ndescription: Weather reports and forecasts\nkeywords: weather, forecast\n---\n"
+        "Use the weather tool and include Celsius units.",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(manager, "PROJECT_PLUGIN_DIR", tmp_path)
+    monkeypatch.setattr(manager, "LEGACY_PLUGIN_DIR", tmp_path / "missing")
+
+    context = manager.build_plugin_context("give me a weather forecast")
+
+    assert "Weather Plugin" in context
+    assert "Celsius" in context
+
+
+def test_plugin_manifest_is_listed(tmp_path, monkeypatch) -> None:
+    from homelab_ai.plugin_manager import list_plugin_manifests
+    import homelab_ai.plugin_manager as manager
+
+    (tmp_path / "demo" ).mkdir()
+    (tmp_path / "demo" / "PLUGIN.md").write_text("Demo plugin", encoding="utf-8")
+    monkeypatch.setattr(manager, "PROJECT_PLUGIN_DIR", tmp_path)
+    monkeypatch.setattr(manager, "LEGACY_PLUGIN_DIR", tmp_path / "missing")
+
+    listed = list_plugin_manifests()
+
+    assert listed[0]["name"] == "demo"
+    assert listed[0]["origin"] == "project"

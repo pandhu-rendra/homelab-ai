@@ -12,7 +12,7 @@ from typing import Optional
 import httpx
 
 from .config import BASE_DIR, logger
-from .plugin_manager import PLUGIN_DIR, discover_plugins
+from .plugin_manager import PLUGIN_DIR, PROJECT_PLUGIN_DIR, discover_plugins, list_plugin_manifests
 
 PLUGIN_INDEX_URL = os.getenv(
     "HOMELAB_PLUGIN_INDEX",
@@ -217,17 +217,36 @@ def remove_plugin(name: str) -> dict:
 def list_plugins() -> list[dict]:
     """Return metadata on all installed plugin files."""
     plugins: list[dict] = []
-    if not PLUGIN_DIR.exists():
-        return plugins
-    for fpath in sorted(PLUGIN_DIR.glob("*.py")):
-        if fpath.name.startswith("_"):
+    roots = [PROJECT_PLUGIN_DIR]
+    if PLUGIN_DIR not in roots:
+        roots.append(PLUGIN_DIR)
+    seen: set[str] = set()
+    for root in roots:
+        if not root.exists():
             continue
-        plugins.append({
-            "name": fpath.stem,
-            "filename": fpath.name,
-            "path": str(fpath),
-            "size": fpath.stat().st_size,
-        })
+        for fpath in sorted(root.glob("*.py")) + sorted(root.glob("*/plugin.py")):
+            if fpath.name.startswith("_") or str(fpath.resolve()) in seen:
+                continue
+            seen.add(str(fpath.resolve()))
+            plugins.append({
+                "name": fpath.parent.name if fpath.name == "plugin.py" else fpath.stem,
+                "filename": fpath.name,
+                "path": str(fpath),
+                "size": fpath.stat().st_size,
+                "portable_manifest": any(
+                    (fpath.parent / name).is_file()
+                    for name in ("PLUGIN.md", "plugin.md", "CLAUDE.md", "GEMINI.md", "GPT.md")
+                ),
+            })
+    for manifest in list_plugin_manifests():
+        if not any(item["name"] == manifest["name"] for item in plugins):
+            plugins.append({
+                "name": manifest["name"],
+                "filename": Path(manifest["path"]).name,
+                "path": manifest["path"],
+                "size": Path(manifest["path"]).stat().st_size,
+                "portable_manifest": True,
+            })
     return plugins
 
 
