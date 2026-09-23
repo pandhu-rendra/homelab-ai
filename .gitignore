@@ -2,19 +2,19 @@
 __pycache__/
 *.pyc
 .env
+history
 agent_log.txt
 provider_failures.log
 autocompleter.db
 sessions.db
 memory.db
+memory.db-shm
+memory.db-wal
 chat_history_persistent.json
 history/
 *.egg-info/
 build/
 dist/
 shots/
-
-# Ignore Recycle Bin and system files
-$RECYCLE.BIN/
-$Recycle.Bin/
-*$RECYCLE.BIN*
+logs/agent_log.txt
+logs/provider_failures.log

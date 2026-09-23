@@ -405,3 +405,9 @@
 2026-09-23 17:49:31 - request_id=req-6569b425 event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'qwen3.7-flash-2026-07-15', 'response_len': 68}
 2026-09-23 17:49:31 - request_id=req-6569b425 event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 68}
 2026-09-23 17:49:31 - request_id=req-6569b425 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 68}
+2026-09-23 17:55:58 - STARTUP | force_demo=False | keys_present=True | demo_mode=False
+2026-09-23 17:56:37 - request_id=req-47567ea7 event=request_start winner=system status=begin details={'event': 'request_start', 'provider': 'system', 'status': 'begin', 'provider_count': 1}
+2026-09-23 17:56:37 - request_id=req-47567ea7 event=attempt winner=Flaz status=start details={'event': 'attempt', 'provider': 'Flaz', 'status': 'start', 'model': 'qwen3.7-flash-2026-07-15', 'timeout': 30.0}
+2026-09-23 17:56:49 - request_id=req-47567ea7 event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'qwen3.7-flash-2026-07-15', 'response_len': 202}
+2026-09-23 17:56:49 - request_id=req-47567ea7 event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 202}
+2026-09-23 17:56:49 - request_id=req-47567ea7 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 202}
