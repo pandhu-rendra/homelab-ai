@@ -3,7 +3,10 @@ __pycache__/
 *.pyc
 .env
 agent_log.txt
+provider_failures.log
 autocompleter.db
+sessions.db
+memory.db
 chat_history_persistent.json
 history/
 *.egg-info/
