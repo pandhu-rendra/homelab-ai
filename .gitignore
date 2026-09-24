@@ -26,6 +26,9 @@ shots/
 .rag_index/
 logs/*.log
 logs/*.txt
+logs/*
 *.bak
 .DS_Store
 Thumbs.db
+todo.txt
+.github
