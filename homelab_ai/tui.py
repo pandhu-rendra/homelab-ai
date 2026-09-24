@@ -769,7 +769,9 @@ class HomeLabApp(App):
             self._show_tools()
         elif cmd == "history":
             self._show_history_summary()
-        elif cmd in ("agent", "model"):
+        elif cmd == "agent" or cmd.startswith("agent "):
+            self._handle_agent_command(cmd)
+        elif cmd == "model" or cmd.startswith("model "):
             self._handle_agent_command(cmd)
         elif cmd.startswith("config"):
             self._handle_config(cmd)
@@ -1529,6 +1531,8 @@ Goal: {goal}"""
             ("/clear · Ctrl+L", "clear the conversation"),
             ("/save · Ctrl+S", "export session to markdown"),
             ("/agent · Ctrl+A", "select agent/provider"),
+            ("/agent create <name>", "create a user-defined agent profile"),
+            ("/agent list|use|enable|disable", "manage user-defined agents"),
             ("⭐ Primary —", "visible in footer bar"),
             ("Ctrl+P", "command palette (search actions)"),
             ("Ctrl+Q", "quit app"),
