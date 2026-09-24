@@ -33,6 +33,21 @@ Release archives can be verified with SHA-256 checksums. Generate a reproducible
 dependency lockfile with `scripts/lock-dependencies.sh` or
 `scripts/lock-dependencies.ps1` when `uv` is installed.
 
+User-defined agents are stored as YAML profiles in `agents/`:
+
+```text
+/agent create hrd
+/agent edit hrd
+/agent enable hrd
+/agent use hrd
+/agent disable hrd
+/agent list
+```
+
+`/agent create` creates a template automatically. Edit its `system_prompt`,
+description, and tool list to make roles such as HRD, drawer, finance,
+teacher, or developer. Disabled agents are not injected into model context.
+
 ---
 
 ## Features

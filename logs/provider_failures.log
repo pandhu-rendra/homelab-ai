@@ -411,3 +411,30 @@
 2026-09-23 17:56:49 - request_id=req-47567ea7 event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'qwen3.7-flash-2026-07-15', 'response_len': 202}
 2026-09-23 17:56:49 - request_id=req-47567ea7 event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 202}
 2026-09-23 17:56:49 - request_id=req-47567ea7 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 202}
+2026-09-23 22:29:55 - STARTUP | force_demo=False | keys_present=True | demo_mode=False
+2026-09-23 22:29:59 - request_id=req-d94d2eec event=request_start winner=system status=begin details={'event': 'request_start', 'provider': 'system', 'status': 'begin', 'provider_count': 1}
+2026-09-23 22:29:59 - request_id=req-d94d2eec event=attempt winner=Flaz status=start details={'event': 'attempt', 'provider': 'Flaz', 'status': 'start', 'model': 'qwen3.7-flash-2026-07-15', 'timeout': 30.0}
+2026-09-23 22:30:12 - request_id=req-d94d2eec event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'qwen3.7-flash-2026-07-15', 'response_len': 389}
+2026-09-23 22:30:12 - request_id=req-d94d2eec event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 389}
+2026-09-23 22:30:12 - request_id=req-d94d2eec event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 389}
+2026-09-24 17:43:54 - request_id=req-91f6ea84 event=request_start winner=system status=begin details={'event': 'request_start', 'provider': 'system', 'status': 'begin', 'provider_count': 1}
+2026-09-24 17:43:54 - request_id=req-91f6ea84 event=attempt winner=Flaz status=start details={'event': 'attempt', 'provider': 'Flaz', 'status': 'start', 'model': 'qwen3.7-flash-2026-07-15', 'timeout': 30.0}
+2026-09-24 17:44:05 - request_id=req-91f6ea84 event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'qwen3.7-flash-2026-07-15', 'response_len': 35}
+2026-09-24 17:44:05 - request_id=req-91f6ea84 event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 35}
+2026-09-24 17:44:05 - request_id=req-91f6ea84 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 35}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=request_start winner=system status=begin details={'event': 'request_start', 'provider': 'system', 'status': 'begin', 'provider_count': 2}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=attempt winner=Slow status=start details={'event': 'attempt', 'provider': 'Slow', 'status': 'start', 'model': 'slow-model', 'timeout': 30.0}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=attempt winner=Fast status=start details={'event': 'attempt', 'provider': 'Fast', 'status': 'start', 'model': 'fast-model', 'timeout': 30.0}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=winner winner=Fast status=success details={'event': 'winner', 'provider': 'Fast', 'status': 'success', 'model': 'fast-model', 'response_len': 4}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=winner winner=Fast status=selected details={'event': 'winner', 'provider': 'Fast', 'status': 'selected', 'response_len': 4}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=request_end winner=Fast status=final details={'event': 'request_end', 'provider': 'Fast', 'status': 'final', 'response_len': 4}
+2026-09-24 17:44:05 - request_id=req-39476ce2 event=attempt winner=Slow status=failed details={'event': 'attempt', 'provider': 'Slow', 'status': 'failed', 'model': 'slow-model', 'timeout': 30.0}
+2026-09-24 17:44:09 - request_id=req-dc47f483 event=request_start winner=system status=begin details={'event': 'request_start', 'provider': 'system', 'status': 'begin', 'provider_count': 2}
+2026-09-24 17:44:09 - request_id=req-dc47f483 event=attempt winner=OpenRouter status=start details={'event': 'attempt', 'provider': 'OpenRouter', 'status': 'start', 'model': 'or-model', 'timeout': 30.0}
+2026-09-24 17:44:09 - request_id=req-dc47f483 event=attempt winner=Flaz status=start details={'event': 'attempt', 'provider': 'Flaz', 'status': 'start', 'model': 'flaz-model', 'timeout': 30.0}
+2026-09-24 17:44:10 - request_id=req-dc47f483 event=winner winner=Flaz status=success details={'event': 'winner', 'provider': 'Flaz', 'status': 'success', 'model': 'flaz-model', 'response_len': 4}
+2026-09-24 17:44:10 - request_id=req-dc47f483 event=winner winner=Flaz status=selected details={'event': 'winner', 'provider': 'Flaz', 'status': 'selected', 'response_len': 4}
+2026-09-24 17:44:10 - request_id=req-dc47f483 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 4}
+2026-09-24 17:44:11 - request_id=req-test-001 event=winner winner=Flaz status=HTTP 200 OK details={'event': 'winner', 'provider': 'Flaz', 'status': 'HTTP 200 OK', 'model': 'claude-sonnet-4-20250514'}
+2026-09-24 17:44:11 - request_id=req-test-001 event=request_end winner=Flaz status=final details={'event': 'request_end', 'provider': 'Flaz', 'status': 'final', 'response_len': 123}
+2026-09-24 17:44:11 - request_id=req-dc47f483 event=attempt winner=OpenRouter status=failed details={'event': 'attempt', 'provider': 'OpenRouter', 'status': 'failed', 'model': 'or-model', 'timeout': 30.0}

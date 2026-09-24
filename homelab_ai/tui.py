@@ -48,6 +48,13 @@ from .config import (
 )
 from .graph import build_agent
 from .llm import SYSTEM_PROMPT, get_provider_list, reinit_providers, trim_chat_history
+from .agent_profiles import (
+    create_agent,
+    delete_agent,
+    edit_agent,
+    list_agents,
+    set_agent_enabled,
+)
 from .memory import (
     get_tool_stats,
     learn_from_conversation,
@@ -422,6 +429,7 @@ class HomeLabApp(App):
         self.force_demo = force_demo
         self.demo_mode = force_demo or not keys_present()
         self._preferred_provider: str = ""
+        self._active_agent_profile: str = ""
         provider_logger.debug(
             "STARTUP | force_demo=%s | keys_present=%s | demo_mode=%s",
             force_demo, keys_present(), self.demo_mode,
@@ -762,7 +770,7 @@ class HomeLabApp(App):
         elif cmd == "history":
             self._show_history_summary()
         elif cmd in ("agent", "model"):
-            self.action_select_agent()
+            self._handle_agent_command(cmd)
         elif cmd.startswith("config"):
             self._handle_config(cmd)
         elif cmd.startswith("plugin"):
@@ -790,6 +798,67 @@ class HomeLabApp(App):
 
         else:
             self.notify(f"Unknown command: /{cmd}", severity="warning")
+
+    def _handle_agent_command(self, cmd: str) -> None:
+        parts = cmd.split(maxsplit=2)
+        sub = parts[1].lower() if len(parts) > 1 else "provider"
+        name = parts[2].strip() if len(parts) > 2 else ""
+        if sub in {"provider", "model"}:
+            self.action_select_agent()
+        elif sub == "list":
+            agents = list_agents()
+            if not agents:
+                self._log(Text.from_markup("[dim]No user agents yet. Use /agent create <name>.[/dim]"))
+                return
+            table = Table.grid(padding=(0, 2))
+            table.add_column(style=f"bold {ACCENT2}")
+            table.add_column(style="grey74")
+            table.add_column(style="grey42")
+            for profile in agents:
+                marker = "active" if profile["name"] == self._active_agent_profile else "idle"
+                state = "enabled" if profile["enabled"] else "disabled"
+                table.add_row(profile["name"], f"{state} · {marker}", profile["description"][:60])
+            self._log(Panel(table, title="User Agents", border_style=ACCENT, box=ROUNDED))
+        elif sub == "create":
+            if not name:
+                self.notify("Usage: /agent create <name>", severity="warning")
+                return
+            result = create_agent(name)
+            if result["ok"]:
+                self._log(Text.from_markup(
+                    f"[green]Agent created:[/green] {result['path']}\n"
+                    f"Edit it with [bold]/agent edit {name}[/bold], then use [bold]/agent use {name}[/bold]."
+                ))
+            else:
+                self.notify(result["error"], severity="warning")
+        elif sub == "use":
+            if not name or not any(p["name"].lower() == name.lower() and p["enabled"] for p in list_agents()):
+                self.notify(f"Enabled agent not found: {name}", severity="warning")
+                return
+            self._active_agent_profile = name
+            self._set_thought(f"Agent profile: {name}")
+            self._render_context()
+        elif sub in {"enable", "disable"}:
+            if not name:
+                self.notify(f"Usage: /agent {sub} <name>", severity="warning")
+                return
+            message = set_agent_enabled(name, sub == "enable")
+            self._log(Text.from_markup(f"[dim]{message}[/dim]"))
+        elif sub == "delete":
+            if not name:
+                self.notify("Usage: /agent delete <name>", severity="warning")
+                return
+            message = delete_agent(name)
+            if self._active_agent_profile.lower() == name.lower():
+                self._active_agent_profile = ""
+            self._log(Text.from_markup(f"[dim]{message}[/dim]"))
+        elif sub == "edit":
+            if not name:
+                self.notify("Usage: /agent edit <name>", severity="warning")
+                return
+            self._log(Text.from_markup(f"[dim]{edit_agent(name)}[/dim]"))
+        else:
+            self.notify("Use /agent list|create|use|enable|disable|edit|delete", severity="warning")
 
     def _handle_plugin(self, cmd: str) -> None:
         parts = cmd.split(maxsplit=2)
@@ -1047,6 +1116,7 @@ class HomeLabApp(App):
                     on_status=_llm_status,
                     on_chunk=kwargs.get("on_chunk"),
                     cancel_event=self._cancel_event,
+                    agent_profile=self._active_agent_profile or None,
                 )
                 if prov == "None":
                     _llm_status("✗ Selected provider failed — demo mode disabled")

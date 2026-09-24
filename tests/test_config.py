@@ -79,3 +79,17 @@ def test_uninstall_requires_confirmation(tmp_path) -> None:
 
     assert "--confirm" in result
     assert target.exists()
+
+
+def test_user_agent_profile_lifecycle(tmp_path, monkeypatch) -> None:
+    import homelab_ai.agent_profiles as profiles
+
+    monkeypatch.setattr(profiles, "AGENT_DIR", tmp_path)
+    monkeypatch.setattr(profiles, "LEGACY_AGENT_DIR", tmp_path / "missing")
+    created = profiles.create_agent("hrd")
+
+    assert created["ok"] is True
+    assert profiles.get_agent("hrd")["enabled"] is True
+    assert "User-defined hrd agent" in profiles.build_agent_context("hrd", "review this CV")
+    assert "disabled" in profiles.set_agent_enabled("hrd", False)
+    assert profiles.build_agent_context("hrd", "review this CV") == ""

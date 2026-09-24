@@ -575,6 +575,7 @@ def call_llm(messages: list[dict], preferred: str = "",
              on_status: Callable[[str], None] | None = None,
              on_chunk: Callable[[str], None] | None = None,
              cancel_event: threading.Event | None = None,
+             agent_profile: str | None = None,
              ) -> tuple[str, str, dict]:
     """Try providers in order. ``preferred`` picks a specific provider first.
     
@@ -620,6 +621,14 @@ def call_llm(messages: list[dict], preferred: str = "",
         plugin_context = build_plugin_context(latest_user_input)
         if plugin_context:
             dynamic_instruction += f"\n\n{plugin_context}"
+    except Exception:
+        pass
+    try:
+        from .agent_profiles import build_agent_context
+        agent_context = build_agent_context(agent_profile, latest_user_input)
+        if agent_context:
+            dynamic_instruction += f"\n\n{agent_context}"
+            complex_request = True
     except Exception:
         pass
 

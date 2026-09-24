@@ -109,6 +109,21 @@ injected only when its name or metadata matches the user request. The model
 receives instructions, never executable Python. Use `/plugin list` to see
 whether a plugin has a `portable` manifest.
 
+### User-defined agents
+
+Create a role-specific YAML profile without adding Python code:
+
+```text
+/agent create hrd
+/agent edit hrd
+/agent use hrd
+/agent disable hrd
+/agent list
+```
+
+Profiles live under `agents/` and contain `name`, `description`, `enabled`,
+`model`, `max_attempts`, `tools`, and `system_prompt` fields.
+
 ### Spesifikasi minimal
 
 | Resource | Minimal |
